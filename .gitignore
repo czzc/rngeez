@@ -1,0 +1,16 @@
+# Claude Code
+.claude/
+
+# Windows
+Thumbs.db
+desktop.ini
+nul
+
+# WoW libraries (download real versions per README)
+Libs/
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
