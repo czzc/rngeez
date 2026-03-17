@@ -1,0 +1,42 @@
+## Interface: 120001
+## Title: RNGeez
+## Notes: Track your rare drop farming attempts. The price you pay to RNG.
+## Author: cazzac
+## Version: 0.1.0-alpha
+## SavedVariables: RNGeezDB
+## IconTexture: Interface\Icons\INV_Misc_Coin_02
+
+## AddonCompartmentFunc: RNGeez_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: RNGeez_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: RNGeez_OnAddonCompartmentLeave
+
+# Libs (minimal dependencies — load order matters)
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\libdatabroker-1-1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+# Data layer (constants and defaults loaded first)
+Data\Constants.lua
+Data\Spells.lua
+Data\DefaultItems.lua
+
+# Core engine
+Core\Bootstrap.lua
+Core\EventBus.lua
+Core\AttemptTracker.lua
+Core\ItemResolver.lua
+Core\DetectionEngine.lua
+
+# Detection handlers
+Detection\LootHandler.lua
+Detection\CombatHandler.lua
+Detection\BagHandler.lua
+Detection\StatisticsHandler.lua
+Detection\SpellHandler.lua
+Detection\RareTracker.lua
+
+# UI
+UI\MinimapButton.lua
+UI\Tooltip.lua
+UI\FoundAlert.lua
