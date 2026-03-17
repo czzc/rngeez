@@ -32,7 +32,7 @@ local DISPLAY_DURATION = 6.0
 local FADE_DURATION = 1.0
 local SLIDE_DISTANCE = 100
 
--- Achievement earned fanfare — the classic "you did it!" sound
+-- Achievement earned fanfare - the classic "you did it!" sound
 local ALERT_SOUND = SOUNDKIT.UI_RAID_BOSS_DEFEATED or 8459
 
 ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ local function ProcessQueue()
 end
 
 ---------------------------------------------------------------------------
--- ONUPDATE — drives the three-phase animation
+-- ONUPDATE - drives the three-phase animation
 ---------------------------------------------------------------------------
 
 local function OnUpdate(self, elapsed)
@@ -224,7 +224,7 @@ alert:SetScript("OnUpdate", OnUpdate)
 
 ---------------------------------------------------------------------------
 -- TEST COMMAND
--- /rng testalert — fires a fake alert for testing
+-- /rng testalert - fires a fake alert for testing
 ---------------------------------------------------------------------------
 
 function FoundAlert:TestAlert()
@@ -245,11 +245,11 @@ end
 function FoundAlert:Init()
     ns.EventBus:RegisterAddonEvent(ns.Events.ITEM_FOUND, function(event, itemName, item, attempts)
         -- Only show the alert for real drops (attempts > 0).
-        -- Collection scan on login fires ITEM_FOUND with 0 attempts —
+        -- Collection scan on login fires ITEM_FOUND with 0 attempts -
         -- we don't want 137 alert popups on every login.
         if attempts and attempts > 0 then
             if animPhase ~= "idle" then
-                -- Currently showing an alert — queue this one
+                -- Currently showing an alert - queue this one
                 table.insert(alertQueue, {
                     name = itemName,
                     item = item,
@@ -262,7 +262,7 @@ function FoundAlert:Init()
 
         ns.RNGeez:Debug("FoundAlert: %s (%d attempts)%s",
             itemName, attempts or 0,
-            (attempts and attempts > 0) and " — ALERT!" or " — skipped (scan)")
+            (attempts and attempts > 0) and " - ALERT!" or " - skipped (scan)")
     end)
 
     ns.RNGeez:Debug("FoundAlert initialized.")

@@ -4,16 +4,16 @@
     
     WHY ENCOUNTER_END INSTEAD OF COMBAT_LOG?
     In Midnight (12.0+), Blizzard's "secret value" system taints unit names
-    and GUIDs from CombatLogGetCurrentEventInfo(). ENCOUNTER_END is clean —
+    and GUIDs from CombatLogGetCurrentEventInfo(). ENCOUNTER_END is clean -
     it provides the encounter ID and success flag directly without taint.
     This is why we use it as our PRIMARY boss kill detection path.
     
     ENCOUNTER_END args:
-        encounterID (number)  — DungeonEncounterID (matches Journal)
-        encounterName (string) — Localized boss name  
-        difficultyID (number) — Instance difficulty
-        groupSize (number)    — Raid/party size
-        success (number)      — 1 = kill, 0 = wipe
+        encounterID (number)  - DungeonEncounterID (matches Journal)
+        encounterName (string) - Localized boss name  
+        difficultyID (number) - Instance difficulty
+        groupSize (number)    - Raid/party size
+        success (number)      - 1 = kill, 0 = wipe
     
     FALLBACK PATH:
     For world bosses and old content without encounter IDs, we also listen
@@ -27,7 +27,7 @@ local CombatHandler = {}
 ns.CombatHandler = CombatHandler
 
 ---------------------------------------------------------------------------
--- ENCOUNTER_END HANDLER (Primary path — clean, no taint)
+-- ENCOUNTER_END HANDLER (Primary path - clean, no taint)
 ---------------------------------------------------------------------------
 local function OnEncounterEnd(event, encounterID, encounterName, difficultyID, groupSize, success)
     -- success is 1 for kill, 0 for wipe

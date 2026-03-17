@@ -3,8 +3,8 @@
     The main RNGeez tracker window.
     
     TWO UI ELEMENTS:
-    1. Minimap hover tooltip — simple summary (tracking count, found count)
-    2. Tracker window — full persistent frame opened on click
+    1. Minimap hover tooltip - simple summary (tracking count, found count)
+    2. Tracker window - full persistent frame opened on click
        - Items grouped by expansion with collapsible headers
        - Each item: icon, name, attempt count, luck color
        - Hover item → WoW item tooltip
@@ -67,7 +67,7 @@ local EXPANSION_ORDER = {
 -- Track which expansion groups are collapsed (persisted in settings)
 local collapsedGroups = {}  -- Set during Init from tsettings
 
--- Luck colors — delegates to AttemptTracker so thresholds stay in sync
+-- Luck colors - delegates to AttemptTracker so thresholds stay in sync
 local function GetLuckColor(attempts, chance)
     if not attempts or not chance or chance <= 0 or attempts <= 0 then
         return 0.5, 0.5, 0.5  -- Gray for no attempts
@@ -327,15 +327,18 @@ local function GetRow(index)
         GameTooltip:Hide()
     end)
 
-    -- Click handler (headers toggle collapse)
-    row:SetScript("OnMouseDown", function(self)
+    -- Click handler
+    row:SetScript("OnMouseDown", function(self, button)
         if self.isHeader and self.expKey then
+            -- Left-click headers: toggle collapse
             collapsedGroups[self.expKey] = not collapsedGroups[self.expKey]
-            -- Persist to settings
             if tsettings then
                 tsettings.collapsedGroups = collapsedGroups
             end
             if ns.Tooltip then ns.Tooltip:Refresh() end
+        elseif button == "RightButton" and self.itemData and ns.CharacterBreakdown then
+            -- Right-click items: show per-character breakdown
+            ns.CharacterBreakdown:Show(self.itemData)
         end
     end)
 

@@ -16,7 +16,7 @@
     
     TIMING:
     We poll stats after ENCOUNTER_END (post-boss-kill) and on login.
-    Not every frame — the API isn't fast and the data only changes on kills.
+    Not every frame - the API isn't fast and the data only changes on kills.
     We stagger polls with a timer to avoid hammering the API.
 ]]
 
@@ -44,7 +44,7 @@ end
 
 -- Sync a single item's attempts from Blizzard statistics.
 --
--- @param item (table) — The item entry with detection.statisticIds
+-- @param item (table) - The item entry with detection.statisticIds
 function StatisticsHandler:SyncItem(item)
     if not item.detection or not item.detection.statisticIds then return end
 

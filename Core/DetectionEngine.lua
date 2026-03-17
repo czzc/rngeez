@@ -21,7 +21,7 @@
     1. A new handler module in Detection/ (registers for the right WoW events)
     2. A new method key in Constants.Methods
     3. A new matching function in DetectionEngine (the MethodMatchers table)
-    4. Items in the database declare the new method — done.
+    4. Items in the database declare the new method - done.
     
     JS ANALOGY:
     Think of this like a Redux middleware/reducer combo. The handlers are
@@ -41,7 +41,7 @@ ns.DetectionEngine = DetectionEngine
 -- game event cycle. Reset each detection pass.
 ---------------------------------------------------------------------------
 
--- The "last spell action" — set by SpellHandler when a relevant spell fires.
+-- The "last spell action" - set by SpellHandler when a relevant spell fires.
 -- Cleared after loot processing. Prevents mining/fishing loot from being
 -- counted as NPC kills.
 DetectionEngine.lastSpellAction = nil
@@ -137,9 +137,9 @@ end
 
 -- Process a detected event against all tracked items.
 --
--- @param method (string) — One of Constants.Methods
--- @param context (table) — Method-specific data extracted by the handler
--- @return (number) — How many items matched (for debug)
+-- @param method (string) - One of Constants.Methods
+-- @param context (table) - Method-specific data extracted by the handler
+-- @return (number) - How many items matched (for debug)
 function DetectionEngine:ProcessAttempt(method, context)
     local matcher = MethodMatchers[method]
     if not matcher then
@@ -172,9 +172,9 @@ end
 
 -- Convenience: process a boss kill from ENCOUNTER_END data.
 --
--- @param encounterId (number) — DungeonEncounterID from ENCOUNTER_END
--- @param success (boolean) — Was the boss killed? (checked before calling ProcessAttempt)
--- @param difficultyId (number) — Instance difficulty
+-- @param encounterId (number) - DungeonEncounterID from ENCOUNTER_END
+-- @param success (boolean) - Was the boss killed? (checked before calling ProcessAttempt)
+-- @param difficultyId (number) - Instance difficulty
 function DetectionEngine:OnBossKill(encounterId, success, difficultyId)
     if not success then return end
 
@@ -186,7 +186,7 @@ end
 
 -- Convenience: process an NPC kill from loot data.
 --
--- @param npcId (number) — The NPC ID extracted from the GUID
+-- @param npcId (number) - The NPC ID extracted from the GUID
 function DetectionEngine:OnNpcKill(npcId)
     self:ProcessAttempt(C.Methods.NPC_KILL, { npcId = npcId })
 end
@@ -204,8 +204,8 @@ function DetectionEngine:GetCurrentMapId()
 end
 
 -- Convert a context table to a debug-friendly string.
--- @param context (table) — The context table
--- @return (string) — Human-readable representation
+-- @param context (table) - The context table
+-- @return (string) - Human-readable representation
 function DetectionEngine:ContextToString(context)
     if not context then return "{}" end
 

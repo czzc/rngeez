@@ -1,6 +1,6 @@
 --[[
     Data/DefaultItems.lua
-    The shipped item database — curated entries for popular farming targets.
+    The shipped item database - curated entries for popular farming targets.
     
     See Bootstrap.lua for merge logic. Detection config comes from here;
     progress data (attempts, found, etc.) lives in SavedVariables.
@@ -242,7 +242,7 @@ ns.DefaultItems = {
     },
 
     ---------------------------------------------------------------------------
-    -- DRAGONFLIGHT — Raid mounts (now soloable in 12.0)
+    -- DRAGONFLIGHT - Raid mounts (now soloable in 12.0)
     ---------------------------------------------------------------------------
 
     -- Vault of the Incarnates: Raszageth drakewatcher manuscript
@@ -320,7 +320,7 @@ ns.DefaultItems = {
     },
 
     ---------------------------------------------------------------------------
-    -- THE WAR WITHIN — Raid mounts
+    -- THE WAR WITHIN - Raid mounts
     ---------------------------------------------------------------------------
 
     ["Reins of the Sureki Skyrazor"] = {
@@ -395,7 +395,7 @@ ns.DefaultItems = {
     },
 
     ---------------------------------------------------------------------------
-    -- MIDNIGHT — Raid mount
+    -- MIDNIGHT - Raid mount
     ---------------------------------------------------------------------------
 
     ["Ashes of Belo'ren"] = {
@@ -413,7 +413,7 @@ ns.DefaultItems = {
     },
 
     ---------------------------------------------------------------------------
-    -- MIDNIGHT — Zone rare drops (ZONE_KILL: any rare in the zone)
+    -- MIDNIGHT - Zone rare drops (ZONE_KILL: any rare in the zone)
     -- Map IDs confirmed by Zac in-game
     ---------------------------------------------------------------------------
 
@@ -490,7 +490,7 @@ ns.DefaultItems = {
         detection = {
             method = C.Methods.ZONE_KILL,
             requiresRare = true,
-            mapIds = { 2405 },               -- Voidstorm (✓ confirmed)
+            mapIds = { 2405, 2444 },          -- Voidstorm + Slayer's Rise sub-zone
         },
     },
 
@@ -501,12 +501,12 @@ ns.DefaultItems = {
         detection = {
             method = C.Methods.ZONE_KILL,
             requiresRare = true,
-            mapIds = { 2405 },               -- Voidstorm (✓ confirmed)
+            mapIds = { 2405, 2444 },          -- Voidstorm + Slayer's Rise sub-zone
         },
     },
 
     ---------------------------------------------------------------------------
-    -- MIDNIGHT — Special drops
+    -- MIDNIGHT - Special drops
     ---------------------------------------------------------------------------
 
     -- Hatches from Nether-Warped Egg after 7 days
@@ -527,7 +527,7 @@ ns.DefaultItems = {
         expansion = C.Expansions.MIDNIGHT,
         detection = {
             method = C.Methods.FISHING,
-            mapIds = { 2405 },               -- Voidstorm (✓ confirmed)
+            mapIds = { 2405, 2444 },          -- Voidstorm + Slayer's Rise sub-zone
         },
     },
 

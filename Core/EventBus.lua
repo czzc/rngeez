@@ -5,10 +5,10 @@
     Replaces AceEvent-3.0 with ~80 lines instead of pulling in the full
     Ace3 dependency tree. Handles two types of events:
     
-    1. WOW EVENTS — Blizzard system events (LOOT_READY, ENCOUNTER_END, etc.)
+    1. WOW EVENTS - Blizzard system events (LOOT_READY, ENCOUNTER_END, etc.)
        These fire from the game engine. We register a frame to listen for them.
     
-    2. ADDON EVENTS — Internal events we define ourselves (TITHE_ATTEMPT_ADDED, etc.)
+    2. ADDON EVENTS - Internal events we define ourselves (TITHE_ATTEMPT_ADDED, etc.)
        These let our modules communicate without tight coupling.
        Think of them like a pub/sub bus or Angular's EventEmitter.
     
@@ -20,8 +20,8 @@
     
     WHY NOT ACE3?
     AceEvent is great, but it pulls in AceAddon, CallbackHandler, and several
-    other libs. For our use case — registering ~10 WoW events and firing a
-    handful of internal ones — this is simpler, smaller, and has zero deps.
+    other libs. For our use case - registering ~10 WoW events and firing a
+    handful of internal ones - this is simpler, smaller, and has zero deps.
 ]]
 
 local addonName, ns = ...
@@ -79,7 +79,7 @@ function EventBus:RegisterWoWEvent(event, handler)
 
         -- Tell the frame to actually listen for this event.
         -- pcall protects us if Blizzard removes or protects the event
-        -- in a future patch — we'll just silently skip it instead of crashing.
+        -- in a future patch - we'll just silently skip it instead of crashing.
         local success, err = pcall(function()
             eventFrame:RegisterEvent(event)
         end)
@@ -192,7 +192,7 @@ ns.Events = {
     ITEM_FOUND        = "TITHE_ITEM_FOUND",
 
     -- Fired when the detection engine finishes processing a loot event
-    -- Args: (none) — UI can use this to refresh displays
+    -- Args: (none) - UI can use this to refresh displays
     DETECTION_CYCLE   = "TITHE_DETECTION_CYCLE",
 
     -- Fired when settings change

@@ -4,13 +4,14 @@
 ## Author: cazzac
 ## Version: 0.1.0-alpha
 ## SavedVariables: RNGeezDB
+## SavedVariablesPerCharacter: RNGeezCharDB
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
 
 ## AddonCompartmentFunc: RNGeez_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: RNGeez_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: RNGeez_OnAddonCompartmentLeave
 
-# Libs (minimal dependencies — load order matters)
+# Libs (minimal dependencies - load order matters)
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0\CallbackHandler-1.0.lua
 Libs\libdatabroker-1-1\LibDataBroker-1.1.lua
@@ -25,6 +26,7 @@ Data\DefaultItems.lua
 Core\Bootstrap.lua
 Core\EventBus.lua
 Core\AttemptTracker.lua
+Core\RarityImporter.lua
 Core\ItemResolver.lua
 Core\DetectionEngine.lua
 
@@ -39,4 +41,6 @@ Detection\RareTracker.lua
 # UI
 UI\MinimapButton.lua
 UI\Tooltip.lua
+UI\ImportWindow.lua
+UI\CharacterBreakdown.lua
 UI\FoundAlert.lua

@@ -49,7 +49,7 @@ local function OnLootReady(event, autoLoot)
             ns.RNGeez:Debug("LOOT_READY: Fishing flag cleared (player in combat, not a real catch)")
             ns.DetectionEngine.lastSpellAction = nil
             ns.DetectionEngine.lastNodeName = nil
-            -- Don't return — fall through to NPC processing below
+            -- Don't return - fall through to NPC processing below
         else
             ns.RNGeez:Debug("LOOT_READY skipped: blocked by spell action '%s'", lastAction)
 
@@ -120,7 +120,7 @@ local function OnLootReady(event, autoLoot)
         end
     end
 
-    -- Also check for ZONE_KILL — any NPC kill in a tracked zone.
+    -- Also check for ZONE_KILL - any NPC kill in a tracked zone.
     -- Only fire if we processed at least one NEW (non-deduped) NPC.
     -- This prevents WoW's duplicate LOOT_READY events from double-counting
     -- zone kills.
@@ -157,7 +157,7 @@ local function OnLootReady(event, autoLoot)
                             if ns.RareTracker then
                                 ns.RareTracker:FlagRare(targetNpcId)
                             end
-                            ns.RNGeez:Debug("LOOT_READY: Rare fallback — NPC %d classified as %s via target",
+                            ns.RNGeez:Debug("LOOT_READY: Rare fallback - NPC %d classified as %s via target",
                                 targetNpcId, classification)
                         end
                     end

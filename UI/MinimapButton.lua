@@ -28,7 +28,7 @@ function MinimapButton:Init()
     -- LibDataBroker might not be available if the lib failed to load
     local LDB = LibStub and LibStub("LibDataBroker-1.1", true)
     if not LDB then
-        ns.RNGeez:Debug("LibDataBroker not available — skipping minimap button.")
+        ns.RNGeez:Debug("LibDataBroker not available - skipping minimap button.")
         return
     end
 

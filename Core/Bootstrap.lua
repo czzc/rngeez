@@ -9,8 +9,8 @@
     onto the `ns` namespace table.
     
     We then wait for two events:
-    1. ADDON_LOADED — fires when OUR addon's SavedVariables are available
-    2. PLAYER_LOGIN — fires when the player is fully in the world
+    1. ADDON_LOADED - fires when OUR addon's SavedVariables are available
+    2. PLAYER_LOGIN - fires when the player is fully in the world
     
     We do most setup on ADDON_LOADED, and final "everything is ready"
     work on PLAYER_LOGIN (like scanning collections, updating UI, etc.)
@@ -19,7 +19,7 @@
     There's no `import` or `require` in WoW Lua. Every file shares the
     same global scope. We avoid polluting globals by using the `ns` table
     (passed via `...` to every file) as our private module system.
-    The ONLY global we create is `RNGeez` — for slash commands and the
+    The ONLY global we create is `RNGeez` - for slash commands and the
     addon compartment, which require global function references.
 ]]
 
@@ -39,7 +39,7 @@ ns.RNGeez = RNGeez
 _G.RNGeez = RNGeez
 
 -- Iterate all tracked items (shipped + custom). Callback receives (name, item).
--- Does NOT pre-filter by enabled/found — callers decide what to check.
+-- Does NOT pre-filter by enabled/found - callers decide what to check.
 function ns.ForEachItem(callback)
     for name, item in pairs(ns.items or {}) do
         callback(name, item)
@@ -101,19 +101,19 @@ local function deepCopy(src)
 end
 
 -- Ensure all expected keys exist in a table, filling from defaults.
--- Does NOT overwrite existing values — only fills in missing ones.
+-- Does NOT overwrite existing values - only fills in missing ones.
 -- This is how we add new settings in updates without wiping user prefs.
 local function fillDefaults(target, defaults)
     for k, v in pairs(defaults) do
         if target[k] == nil then
-            -- Key is missing entirely — insert the default
+            -- Key is missing entirely - insert the default
             if type(v) == "table" then
                 target[k] = deepCopy(v)
             else
                 target[k] = v
             end
         elseif type(v) == "table" and type(target[k]) == "table" then
-            -- Both are tables — recurse to fill nested defaults
+            -- Both are tables - recurse to fill nested defaults
             fillDefaults(target[k], v)
         end
         -- If the key exists and isn't a table-table mismatch, leave it alone
@@ -128,7 +128,7 @@ local function mergeDefaultItems()
 
     for name, defaults in pairs(ns.DefaultItems) do
         if not saved[name] then
-            -- Brand new item the user hasn't seen before — insert with zero progress
+            -- Brand new item the user hasn't seen before - insert with zero progress
             saved[name] = {
                 attempts        = 0,
                 sessionAttempts = 0,
@@ -173,7 +173,7 @@ end
 ---------------------------------------------------------------------------
 -- INITIALIZATION
 -- We use a hidden frame to listen for system events. This is the standard
--- WoW addon pattern — create an invisible frame, register events on it,
+-- WoW addon pattern - create an invisible frame, register events on it,
 -- and handle them in OnEvent.
 ---------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame")
@@ -184,7 +184,7 @@ local playerLoggedIn = false
 
 -- Called when our SavedVariables are available
 local function OnAddonLoaded(loadedAddonName)
-    -- This event fires for EVERY addon — only respond to ours
+    -- This event fires for EVERY addon - only respond to ours
     if loadedAddonName ~= addonName then return end
 
     -- Initialize SavedVariables with structure if this is a fresh install
@@ -192,7 +192,12 @@ local function OnAddonLoaded(loadedAddonName)
     if not RNGeezDB[C.DBKeys.ITEMS]    then RNGeezDB[C.DBKeys.ITEMS]    = {} end
     if not RNGeezDB[C.DBKeys.CUSTOM]   then RNGeezDB[C.DBKeys.CUSTOM]   = {} end
     if not RNGeezDB[C.DBKeys.SETTINGS] then RNGeezDB[C.DBKeys.SETTINGS] = {} end
-    if not RNGeezDB[C.DBKeys.STATS]    then RNGeezDB[C.DBKeys.STATS]    = {} end
+    if not RNGeezDB[C.DBKeys.STATS]       then RNGeezDB[C.DBKeys.STATS]       = {} end
+    if not RNGeezDB[C.DBKeys.CHARACTERS]  then RNGeezDB[C.DBKeys.CHARACTERS]  = {} end
+
+    -- Initialize per-character SavedVariables
+    if not RNGeezCharDB then RNGeezCharDB = {} end
+    if not RNGeezCharDB.items then RNGeezCharDB.items = {} end
 
     -- Fill in any missing settings from defaults (non-destructive)
     fillDefaults(RNGeezDB[C.DBKeys.SETTINGS], DEFAULT_SETTINGS)
@@ -205,6 +210,7 @@ local function OnAddonLoaded(loadedAddonName)
     ns.items    = RNGeezDB[C.DBKeys.ITEMS]
     ns.custom   = RNGeezDB[C.DBKeys.CUSTOM]
     ns.settings = RNGeezDB[C.DBKeys.SETTINGS]
+    ns.charDB   = RNGeezCharDB
 
     addonLoaded = true
     RNGeez:Debug("SavedVariables loaded. %d shipped items, %d custom items.",
@@ -225,16 +231,37 @@ local function OnPlayerLogin()
     end
 end
 
--- Final initialization — both SavedVariables and player are ready.
+-- Final initialization - both SavedVariables and player are ready.
 -- Module init ORDER matters here:
 --   1. EventBus (everything else depends on it for event registration)
 --   2. DetectionEngine (initializes all detection handlers internally)
 --   3. UI modules (they listen for addon events from detection)
 function RNGeez:FinishInit()
-    -- 1. Event system first — all other modules register events through this
+    -- 0. Capture player identity and register in the character roster
+    local guid = UnitGUID("player")
+    local playerName = UnitName("player")
+    local realm = GetRealmName()
+    local _, className = UnitClass("player")
+
+    if guid then
+        ns.playerGUID = guid
+        RNGeezCharDB.guid = guid
+
+        local roster = RNGeezDB[C.DBKeys.CHARACTERS]
+        if not roster[guid] then roster[guid] = {} end
+        roster[guid].name  = playerName
+        roster[guid].realm = realm
+        roster[guid].class = className
+
+        -- Sync this character's per-char attempts into the account-wide roster
+        -- so the breakdown UI can show all characters' data
+        roster[guid].items = RNGeezCharDB.items
+    end
+
+    -- 1. Event system first - all other modules register events through this
     if ns.EventBus then ns.EventBus:Init() end
 
-    -- 2. Detection engine — initializes LootHandler, CombatHandler, etc.
+    -- 2. Detection engine - initializes LootHandler, CombatHandler, etc.
     --    and registers all WoW events needed for tracking
     if ns.DetectionEngine then ns.DetectionEngine:Init() end
 
@@ -256,7 +283,7 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
 -- The OnEvent handler dispatches to the right function based on event name.
--- This is the WoW equivalent of addEventListener — one handler, switch on event.
+-- This is the WoW equivalent of addEventListener - one handler, switch on event.
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         OnAddonLoaded(...)
@@ -279,7 +306,7 @@ function RNGeez:Print(...)
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. msg)
 end
 
--- Debug logging — only prints when debug mode is enabled
+-- Debug logging - only prints when debug mode is enabled
 function RNGeez:Debug(...)
     if ns.settings and ns.settings.debugMode then
         local msg = string.format(...)
@@ -337,8 +364,8 @@ end
 
 ---------------------------------------------------------------------------
 -- SLASH COMMANDS
--- /rng — opens the tooltip or config (later)
--- /rng debug — toggles debug mode
+-- /rng - opens the tooltip or config (later)
+-- /rng debug - toggles debug mode
 ---------------------------------------------------------------------------
 local function handleDebug()
     ns.settings.debugMode = not ns.settings.debugMode
@@ -399,7 +426,7 @@ local function handleList()
         else
             color = "|cFF33FF33"
         end
-        RNGeez:Print("  %s%s|r — %s  |cFF888888(%s)|r",
+        RNGeez:Print("  %s%s|r - %s  |cFF888888(%s)|r",
             color, item.name or "?", summary, expansion)
     end
 end
@@ -411,16 +438,29 @@ local function handleReset()
         item.found = false
         item.finds = {}
     end)
+
+    -- Clear per-character data
+    if ns.charDB then ns.charDB.items = {} end
+
+    -- Clear all characters' snapshots in the roster
+    local roster = RNGeezDB[C.DBKeys.CHARACTERS]
+    if roster then
+        for _, charInfo in pairs(roster) do
+            charInfo.items = {}
+        end
+    end
+
     RNGeez:Print("All attempt data has been reset.")
 end
 
 local function handleHelp()
     RNGeez:Print("Commands:")
-    RNGeez:Print("  /rng         — Toggle tracker window")
-    RNGeez:Print("  /rng list    — Show items you're still hunting")
-    RNGeez:Print("  /rng status  — Show addon status")
-    RNGeez:Print("  /rng debug   — Toggle debug logging")
-    RNGeez:Print("  /rng reset   — Reset all attempt data")
+    RNGeez:Print("  /rng         - Toggle tracker window")
+    RNGeez:Print("  /rng list    - Show items you're still hunting")
+    RNGeez:Print("  /rng status  - Show addon status")
+    RNGeez:Print("  /rng debug   - Toggle debug logging")
+    RNGeez:Print("  /rng reset   - Reset all attempt data")
+    RNGeez:Print("  /rng import  - Import data from Rarity addon")
 end
 
 SLASH_RNGEEZ1 = "/rng"
@@ -433,6 +473,8 @@ SlashCmdList["RNGEEZ"] = function(input)
     elseif cmd == "reset" then      RNGeez:Print("Type /rng resetconfirm to wipe ALL attempt data. This cannot be undone.")
     elseif cmd == "list" then       handleList()
     elseif cmd == "resetconfirm" then handleReset()
+    elseif cmd == "import" then     if ns.RarityImporter then ns.RarityImporter:ShowImport() end
+    elseif cmd == "restorebackup" then if ns.RarityImporter then ns.RarityImporter:RestoreBackup() end
     elseif cmd == "testalert" then  if ns.FoundAlert then ns.FoundAlert:TestAlert() end
     elseif cmd == "" then           if ns.Tooltip then ns.Tooltip:Toggle() end
     else                            handleHelp()

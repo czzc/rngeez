@@ -3,7 +3,7 @@
     Handles two responsibilities:
     
     1. ITEM INFO CACHING
-       WoW's C_Item.GetItemInfo() is async — the first call for an uncached
+       WoW's C_Item.GetItemInfo() is async - the first call for an uncached
        item returns nil and fires GET_ITEM_INFO_RECEIVED when it's ready.
        We queue lookups and resolve them when the data arrives, so the rest
        of the addon can just ask "give me the icon for item 50818" without
@@ -39,8 +39,8 @@ local pendingLookups = {}
 -- Request item info for an item ID. Returns cached data immediately if
 -- available, or nil if we need to wait for the server response.
 --
--- @param itemId (number) — The WoW item ID
--- @return info (table|nil) — { name, link, icon, quality } or nil if pending
+-- @param itemId (number) - The WoW item ID
+-- @return info (table|nil) - { name, link, icon, quality } or nil if pending
 function ItemResolver:GetItemInfo(itemId)
     if not itemId then return nil end
 
@@ -55,7 +55,7 @@ function ItemResolver:GetItemInfo(itemId)
     local name, link, quality, _, _, _, _, _, _, icon = C_Item.GetItemInfo(itemId)
 
     if name then
-        -- Data was already cached by the WoW client — store and return
+        -- Data was already cached by the WoW client - store and return
         infoCache[itemId] = {
             name    = name,
             link    = link,
@@ -64,7 +64,7 @@ function ItemResolver:GetItemInfo(itemId)
         }
         return infoCache[itemId]
     else
-        -- Not cached yet — mark as pending. WoW will fire
+        -- Not cached yet - mark as pending. WoW will fire
         -- GET_ITEM_INFO_RECEIVED when it arrives from the server.
         pendingLookups[itemId] = true
         return nil
@@ -74,8 +74,8 @@ end
 -- Get just the icon texture path for an item.
 -- Returns a default question mark icon if the item isn't cached yet.
 --
--- @param itemId (number) — The WoW item ID
--- @return (string) — Texture path for SetTexture()
+-- @param itemId (number) - The WoW item ID
+-- @return (string) - Texture path for SetTexture()
 function ItemResolver:GetIcon(itemId)
     local info = self:GetItemInfo(itemId)
     if info and info.icon then
@@ -114,7 +114,7 @@ end
 -- Checks whether tracked items have been obtained by scanning the player's
 -- mount journal, pet journal, and toy box.
 -- 
--- This is how we detect that the player has found something — not from
+-- This is how we detect that the player has found something - not from
 -- the loot event itself, but by noticing it appeared in their collection.
 -- More reliable than checking loot contents, which can be buggy with
 -- bonus rolls, group loot, etc.
@@ -145,8 +145,8 @@ end
 -- Check if a specific item is owned by the player.
 -- Dispatches to the appropriate API based on item type.
 --
--- @param item (table) — The item entry
--- @return (boolean) — true if the player has this item
+-- @param item (table) - The item entry
+-- @return (boolean) - true if the player has this item
 function ItemResolver:IsItemOwned(item)
     if not item then return false end
 
@@ -160,7 +160,7 @@ function ItemResolver:IsItemOwned(item)
         return self:IsToyOwned(item)
     else
         -- Generic items: check if it's in the player's bags
-        -- (or just return false — manual marking for misc items)
+        -- (or just return false - manual marking for misc items)
         return false
     end
 end
@@ -168,7 +168,7 @@ end
 -- Check if a mount is owned via the mount journal.
 -- Uses spellId if available (more reliable), falls back to iterating the journal.
 --
--- @param item (table) — The item entry (needs .spellId or .itemId)
+-- @param item (table) - The item entry (needs .spellId or .itemId)
 -- @return (boolean)
 function ItemResolver:IsMountOwned(item)
     -- If we have a spell ID, we can use the direct lookup
@@ -193,7 +193,7 @@ end
 
 -- Check if a battle pet is owned via the pet journal.
 --
--- @param item (table) — The item entry (needs .itemId)
+-- @param item (table) - The item entry (needs .itemId)
 -- @return (boolean)
 function ItemResolver:IsPetOwned(item)
     if not item.itemId then return false end
@@ -207,7 +207,7 @@ end
 
 -- Check if a toy is owned via the toy box.
 --
--- @param item (table) — The item entry (needs .itemId)
+-- @param item (table) - The item entry (needs .itemId)
 -- @return (boolean)
 function ItemResolver:IsToyOwned(item)
     if not item.itemId then return false end
@@ -224,7 +224,7 @@ function ItemResolver:Init()
     -- Item info from server
     ns.EventBus:RegisterWoWEvent("GET_ITEM_INFO_RECEIVED", OnItemInfoReceived)
 
-    -- Collection change events — trigger a rescan
+    -- Collection change events - trigger a rescan
     local function onCollectionChange()
         -- Slight delay to let the API update before we query it.
         -- C_Timer.After is the WoW equivalent of setTimeout.
@@ -237,10 +237,43 @@ function ItemResolver:Init()
     ns.EventBus:RegisterWoWEvent("COMPANION_LEARNED", onCollectionChange)
     ns.EventBus:RegisterWoWEvent("NEW_TOY_ADDED", onCollectionChange)
 
-    -- Do an initial scan after a short delay (let collections API load)
+    -- Resolve missing mount spellIds, then scan collections.
+    -- Delayed 5 seconds to let the mount journal and collections API load.
     C_Timer.After(5.0, function()
+        self:ResolveSpellIds()
         self:ScanCollections()
     end)
 
     ns.RNGeez:Debug("ItemResolver initialized.")
+end
+
+---------------------------------------------------------------------------
+-- SPELL ID RESOLUTION
+-- Many mount entries ship with spellId = 0 because the correct spellId
+-- wasn't known at data entry time. We resolve them at runtime using
+-- C_MountJournal.GetMountFromItem(), which maps itemId → mountId.
+---------------------------------------------------------------------------
+
+function ItemResolver:ResolveSpellIds()
+    local resolved = 0
+
+    ns.ForEachItem(function(_, item)
+        if item.type ~= C.ItemTypes.MOUNT then return end
+        if (item.spellId or 0) ~= 0 then return end
+        if not item.itemId then return end
+
+        local mountID = C_MountJournal.GetMountFromItem(item.itemId)
+        if not mountID then return end
+
+        local _, spellId = C_MountJournal.GetMountInfoByID(mountID)
+        if spellId and spellId > 0 then
+            item.spellId = spellId
+            resolved = resolved + 1
+            ns.RNGeez:Print("Resolved mount: %s → spellId %d", item.name or "?", spellId)
+        end
+    end)
+
+    if resolved > 0 then
+        ns.RNGeez:Debug("Resolved %d mount spellIds from the mount journal.", resolved)
+    end
 end

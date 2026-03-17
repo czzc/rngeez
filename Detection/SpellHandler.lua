@@ -11,10 +11,10 @@
     When LOOT_READY fires, LootHandler checks this flag to route correctly.
     
     EVENTS:
-    UNIT_SPELLCAST_SUCCEEDED — fires when any unit completes a cast.
+    UNIT_SPELLCAST_SUCCEEDED - fires when any unit completes a cast.
     We filter to "player" and check against our RelevantSpells table.
     
-    UNIT_SPELLCAST_SENT — fires earlier (when cast begins). We use this
+    UNIT_SPELLCAST_SENT - fires earlier (when cast begins). We use this
     for "Opening" casts to capture the target name (the node/chest),
     because by the time SUCCEEDED fires, the target info may be gone.
 ]]

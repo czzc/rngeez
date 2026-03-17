@@ -12,7 +12,7 @@
     
     PROBABILITY MODEL:
     Uses the complement method: P(drop in N tries) = 1 - (1 - 1/chance)^N
-    This is identical to Rarity's math — it's just basic probability,
+    This is identical to Rarity's math - it's just basic probability,
     not anything proprietary.
     
     "LUCK" ASSESSMENT:
@@ -34,17 +34,22 @@ ns.AttemptTracker = AttemptTracker
 -- Add one attempt to an item. This is the primary entry point called by
 -- all detection handlers.
 -- 
--- @param item (table) — The item entry from ns.items or ns.custom
--- @param source (string) — Human-readable source for debug logging
+-- @param item (table) - The item entry from ns.items or ns.custom
+-- @param source (string) - Human-readable source for debug logging
 --                          (e.g., "ENCOUNTER_END: Lich King", "LOOT_READY: NPC 36597")
 function AttemptTracker:AddAttempt(item, source)
     if not item then return end
     if item.found and not item.repeatable then return end
     if item.enabled == false then return end
 
-    -- Increment all three counters
+    -- Increment account-wide and session counters
     item.attempts = (item.attempts or 0) + 1
     item.sessionAttempts = (item.sessionAttempts or 0) + 1
+
+    -- Attribute to current character
+    if ns.charDB and ns.charDB.items and item.name then
+        ns.charDB.items[item.name] = (ns.charDB.items[item.name] or 0) + 1
+    end
 
     -- Log the attempt in debug mode
     ns.RNGeez:Debug("Attempt #%d for %s (source: %s)",
@@ -64,9 +69,9 @@ end
 -- Used when syncing from Blizzard statistics or for manual corrections.
 -- Only updates if the new count is HIGHER (prevents accidental data loss).
 --
--- @param item (table) — The item entry
--- @param count (number) — The new attempt count
--- @param source (string) — Why we're syncing (for debug)
+-- @param item (table) - The item entry
+-- @param count (number) - The new attempt count
+-- @param source (string) - Why we're syncing (for debug)
 function AttemptTracker:SyncAttempts(item, count, source)
     if not item or not count then return end
     if count <= (item.attempts or 0) then return end
@@ -85,7 +90,7 @@ end
 -- Called when the ItemResolver detects that the player has obtained an item.
 -- Records the "find" event and fires the ITEM_FOUND addon event.
 --
--- @param item (table) — The item entry
+-- @param item (table) - The item entry
 function AttemptTracker:MarkFound(item)
     if not item then return end
 
@@ -113,9 +118,9 @@ end
 -- Calculate the probability of having received at least one drop
 -- in the given number of attempts.
 --
--- @param attempts (number) — How many attempts the player has made
--- @param chance (number) — Drop rate denominator (100 = 1%, 200 = 0.5%)
--- @return (number) — Probability between 0 and 1
+-- @param attempts (number) - How many attempts the player has made
+-- @param chance (number) - Drop rate denominator (100 = 1%, 200 = 0.5%)
+-- @return (number) - Probability between 0 and 1
 function AttemptTracker:GetProbability(attempts, chance)
     if not attempts or not chance then return 0 end
     if attempts <= 0 or chance <= 0 then return 0 end
@@ -128,9 +133,9 @@ end
 -- Calculate how many attempts are needed to reach a given probability.
 -- Useful for the "expected attempts" display.
 --
--- @param targetProb (number) — Target probability (e.g., 0.5 for 50%)
--- @param chance (number) — Drop rate denominator
--- @return (number) — Number of attempts needed (rounded up)
+-- @param targetProb (number) - Target probability (e.g., 0.5 for 50%)
+-- @param chance (number) - Drop rate denominator
+-- @return (number) - Number of attempts needed (rounded up)
 function AttemptTracker:GetAttemptsForProbability(targetProb, chance)
     if not targetProb or not chance then return 0 end
     if targetProb <= 0 or targetProb >= 1 or chance <= 0 then return 0 end
@@ -143,7 +148,7 @@ end
 -- Get a human-readable "luck assessment" string and color.
 -- Returns a descriptor and an RGB color table.
 --
--- @param probability (number) — Current probability (0-1)
+-- @param probability (number) - Current probability (0-1)
 -- @return label (string), color (table {r, g, b})
 function AttemptTracker:GetLuckAssessment(probability)
     -- Thresholds are subjective but match common player expectations.
@@ -167,8 +172,8 @@ end
 -- Build a formatted summary string for an item's current state.
 -- Used by the tooltip and chat announcements.
 --
--- @param item (table) — The item entry
--- @return (string) — Formatted summary like "347 attempts (86.7% — Very unlucky)"
+-- @param item (table) - The item entry
+-- @return (string) - Formatted summary like "347 attempts (86.7% - Very unlucky)"
 function AttemptTracker:GetSummaryText(item)
     if not item then return "" end
 
@@ -183,7 +188,7 @@ function AttemptTracker:GetSummaryText(item)
     local pct   = prob * 100
     local label = self:GetLuckAssessment(prob)
 
-    return string.format("%d attempts (%.1f%% — %s)", attempts, pct, label)
+    return string.format("%d attempts (%.1f%% - %s)", attempts, pct, label)
 end
 
 ---------------------------------------------------------------------------
@@ -191,7 +196,7 @@ end
 ---------------------------------------------------------------------------
 
 -- Print an attempt update to chat.
--- Format: "Invincible's Reins: 348 attempts (86.9% — Very unlucky)"
+-- Format: "Invincible's Reins: 348 attempts (86.9% - Very unlucky)"
 local function AnnounceAttempt(self, item)
     if not item then return end
 

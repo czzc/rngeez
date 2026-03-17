@@ -41,8 +41,8 @@ local initialSnapshotTaken = false
 
 -- Count how many of a specific item the player has across all bags.
 --
--- @param itemId (number) — The item to count
--- @return (number) — Total quantity across all bags
+-- @param itemId (number) - The item to count
+-- @return (number) - Total quantity across all bags
 local function GetBagItemCount(itemId)
     local total = 0
 
@@ -65,7 +65,7 @@ end
 -- Iterates all items with USE_ITEM detection method and collects their
 -- sourceItemIds into a flat set.
 --
--- @return (table) — { [itemId] = true } of items to monitor
+-- @return (table) - { [itemId] = true } of items to monitor
 local function GetTrackedSourceItems()
     local tracked = {}
 
@@ -84,7 +84,7 @@ end
 
 -- Take a snapshot of all tracked source item quantities.
 --
--- @return (table) — { [itemId] = count }
+-- @return (table) - { [itemId] = count }
 local function SnapshotCounts()
     local counts = {}
     local tracked = GetTrackedSourceItems()
@@ -100,7 +100,7 @@ end
 -- BAG_UPDATE_DELAYED HANDLER
 ---------------------------------------------------------------------------
 local function OnBagUpdateDelayed(event)
-    -- Skip the first update — bags are still loading from the server.
+    -- Skip the first update - bags are still loading from the server.
     -- We take our initial snapshot here instead of acting on it.
     if not initialSnapshotTaken then
         previousCounts = SnapshotCounts()
@@ -117,7 +117,7 @@ local function OnBagUpdateDelayed(event)
         local newCount = newCounts[itemId] or 0
 
         if newCount < oldCount then
-            -- Quantity decreased — the player used/opened this item
+            -- Quantity decreased - the player used/opened this item
             local consumed = oldCount - newCount
 
             ns.RNGeez:Debug("BagHandler: Item %d decreased by %d (%d → %d)",

@@ -17,7 +17,7 @@
     - UPDATE_MOUSEOVER_UNIT: catches rares the player mouses over
     - NAME_PLATE_UNIT_ADDED: catches rares that appear on nameplates
     
-    This casts a wide net — if the player even glances at a rare, we flag it.
+    This casts a wide net - if the player even glances at a rare, we flag it.
 ]]
 
 local addonName, ns = ...
@@ -40,8 +40,8 @@ local CACHE_DURATION = 60.0
 
 -- Check if a given NPC ID has been flagged as a rare recently.
 --
--- @param npcId (number) — The NPC ID to check
--- @return (boolean) — true if this NPC was seen as rare/rareelite
+-- @param npcId (number) - The NPC ID to check
+-- @return (boolean) - true if this NPC was seen as rare/rareelite
 function RareTracker:IsRare(npcId)
     if not npcId then return false end
 
@@ -50,7 +50,7 @@ function RareTracker:IsRare(npcId)
         return true
     end
 
-    -- Expired or not found — clean it up
+    -- Expired or not found - clean it up
     if expiration then
         rareCache[npcId] = nil
     end
@@ -61,7 +61,7 @@ end
 -- Flag an NPC ID as rare. Called when we detect a rare via unit checks,
 -- and as a fallback from LootHandler when the target is still available.
 --
--- @param npcId (number) — The NPC ID to flag
+-- @param npcId (number) - The NPC ID to flag
 function RareTracker:FlagRare(npcId)
     if not npcId then return end
 

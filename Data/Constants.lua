@@ -10,7 +10,7 @@
 -- Grab the addon namespace table that WoW passes to every file in this addon.
 -- addonName = "RNGeez" (string), ns = shared namespace table (empty at first).
 -- Every .lua file in the TOC receives the same `ns` table, so it acts as our
--- private cross-file communication channel — like a shared module scope.
+-- private cross-file communication channel - like a shared module scope.
 local addonName, ns = ...
 
 -- Create the constants sub-table on the namespace
@@ -31,7 +31,7 @@ C.Methods = {
     OPEN_NODE   = "OPEN_NODE",   -- Opening a world object (chests, crates, etc.)
     USE_ITEM    = "USE_ITEM",    -- Consuming/opening a bag item
     SPELL_CAST  = "SPELL_CAST",  -- Specific spell successfully cast
-    -- STATISTIC is not a detection method — no matcher exists for it.
+    -- STATISTIC is not a detection method - no matcher exists for it.
     -- Items use detection.statisticIds for syncing via StatisticsHandler,
     -- which polls the Blizzard statistics API directly.
     STATISTIC   = "STATISTIC",
@@ -115,7 +115,7 @@ C.Difficulties = {
 -- Format: { r, g, b } where each value is 0-1.
 ---------------------------------------------------------------------------
 C.Colors = {
-    -- Primary accent — a warm gold, like a coin. Fitting for "Tithe."
+    -- Primary accent - a warm gold, like a coin. Fitting for "Tithe."
     ACCENT     = { 0.94, 0.76, 0.20 },  -- #F0C233
     -- Text colors
     WHITE      = { 1.0,  1.0,  1.0  },
@@ -134,8 +134,9 @@ C.Colors = {
 -- Centralized key names so we don't scatter magic strings everywhere.
 ---------------------------------------------------------------------------
 C.DBKeys = {
-    ITEMS     = "items",      -- Shipped item progress data
-    CUSTOM    = "custom",     -- User-created item entries
-    SETTINGS  = "settings",   -- Addon preferences
-    STATS     = "statistics", -- Blizzard statistic snapshots per character
+    ITEMS      = "items",      -- Shipped item progress data
+    CUSTOM     = "custom",     -- User-created item entries
+    SETTINGS   = "settings",   -- Addon preferences
+    STATS      = "statistics", -- Blizzard statistic snapshots per character
+    CHARACTERS = "characters", -- Per-character roster with attempt snapshots
 }
