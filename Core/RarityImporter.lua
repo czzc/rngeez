@@ -43,6 +43,17 @@ local function findRNGeezItem(name)
     return nil
 end
 
+-- Import find history entries from Rarity into an item's finds array.
+local function importRarityFinds(item, rarityFinds)
+    if not item.finds then item.finds = {} end
+    for _, f in ipairs(rarityFinds) do
+        table.insert(item.finds, {
+            attempts  = tonumber(f.totalAttempts or f.attempts) or 0,
+            timestamp = 0,
+        })
+    end
+end
+
 -- Deep-copy only the progress fields we need for backup/restore.
 local function copyProgress(item)
     local copy = {
@@ -126,7 +137,10 @@ function RarityImporter:ScanChanges()
 
         summary.matched = summary.matched + 1
 
-        local rarityAttempts = rarityData.attempts or 0
+        local rarityAttempts = tonumber(rarityData.attempts) or 0
+        if rarityAttempts < 0 then
+            rarityAttempts = 0
+        end
         local currentAttempts = item.attempts or 0
         local deltaAttempts = rarityAttempts - currentAttempts
         if deltaAttempts < 0 then deltaAttempts = 0 end
@@ -220,17 +234,14 @@ function RarityImporter:RestoreBackup()
     restoreTable(ns.items, backup.items)
     restoreTable(ns.custom, backup.custom)
 
-    -- Restore per-character data
-    if backup.charItems and ns.charDB then
-        ns.charDB.items = {}
-        for name, count in pairs(backup.charItems) do
-            ns.charDB.items[name] = count
-        end
+    -- Restore per-character data (uses wipe to preserve roster alias)
+    if backup.charItems then
+        ns.RNGeez:ReplaceCharItems(backup.charItems)
     end
 
     RNGeezDB._backup = nil
 
-    ns.EventBus:FireAddonEvent(ns.Events.DETECTION_CYCLE)
+    if ns.EventBus then ns.EventBus:FireAddonEvent(ns.Events.DETECTION_CYCLE) end
     ns.RNGeez:Print("Backup restored. %d items reverted to pre-import state.", restored)
 end
 
@@ -249,26 +260,32 @@ function RarityImporter:ExecuteImport(changes)
 
         -- Sync attempts upward
         if change.deltaAttempts > 0 then
-            ns.AttemptTracker:SyncAttempts(item, rarity.attempts, "Rarity import")
+            ns.AttemptTracker:SyncAttempts(item, change.newAttempts, "Rarity import", true)
             counts.attempts = counts.attempts + 1
         end
 
-        -- Mark as found
+        -- Mark as found (silent - no alert during bulk import)
         if change.newlyFound then
             item.found = true
-            counts.found = counts.found + 1
-        end
 
-        -- Import find history
-        if change.hasFinds and rarity.finds then
-            if not item.finds then item.finds = {} end
-            if #item.finds == 0 then
-                for _, f in ipairs(rarity.finds) do
-                    table.insert(item.finds, {
-                        attempts  = f.totalAttempts or f.attempts or 0,
-                        timestamp = 0,
-                    })
-                end
+            -- Prefer Rarity's detailed find history, otherwise synthesize one
+            if change.hasFinds and rarity.finds and #rarity.finds > 0 then
+                importRarityFinds(item, rarity.finds)
+                counts.finds = counts.finds + 1
+            elseif not item.finds or #item.finds == 0 then
+                if not item.finds then item.finds = {} end
+                table.insert(item.finds, {
+                    attempts  = change.newAttempts,
+                    timestamp = 0,
+                })
+            end
+
+            counts.found = counts.found + 1
+
+        -- Import find history even if not newly found
+        elseif change.hasFinds and rarity.finds then
+            if not item.finds or #item.finds == 0 then
+                importRarityFinds(item, rarity.finds)
                 counts.finds = counts.finds + 1
             end
         end

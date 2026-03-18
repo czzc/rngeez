@@ -13,99 +13,80 @@ local C = ns.Constants
 local CharacterBreakdown = {}
 ns.CharacterBreakdown = CharacterBreakdown
 
--- WoW class colors (standard RAID_CLASS_COLORS fallback)
-local CLASS_COLORS = {
-    WARRIOR     = { 0.78, 0.61, 0.43 },
-    PALADIN     = { 0.96, 0.55, 0.73 },
-    HUNTER      = { 0.67, 0.83, 0.45 },
-    ROGUE       = { 1.00, 0.96, 0.41 },
-    PRIEST      = { 1.00, 1.00, 1.00 },
-    DEATHKNIGHT = { 0.77, 0.12, 0.23 },
-    SHAMAN      = { 0.00, 0.44, 0.87 },
-    MAGE        = { 0.25, 0.78, 0.92 },
-    WARLOCK     = { 0.53, 0.53, 0.93 },
-    MONK        = { 0.00, 1.00, 0.60 },
-    DRUID       = { 1.00, 0.49, 0.04 },
-    DEMONHUNTER = { 0.64, 0.19, 0.79 },
-    EVOKER      = { 0.20, 0.58, 0.50 },
-}
-
 local function GetClassColor(class)
-    if class and CLASS_COLORS[class] then
-        return unpack(CLASS_COLORS[class])
+    if class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+        local c = RAID_CLASS_COLORS[class]
+        return c.r, c.g, c.b
     end
     return 0.5, 0.5, 0.5
 end
 
 ---------------------------------------------------------------------------
--- FRAME
+-- FRAME (lazy-initialized on first Show)
 ---------------------------------------------------------------------------
 
-local frame = CreateFrame("Frame", "RNGeezCharBreakdown", UIParent, "BackdropTemplate")
-frame:SetSize(340, 380)
-frame:SetPoint("CENTER", 200, 0)
-frame:SetFrameStrata("DIALOG")
-frame:SetMovable(true)
-frame:EnableMouse(true)
-frame:RegisterForDrag("LeftButton")
-frame:SetScript("OnDragStart", frame.StartMoving)
-frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-frame:SetBackdrop({
-    bgFile   = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets   = { left = 1, right = 1, top = 1, bottom = 1 },
-})
-frame:SetBackdropColor(0.06, 0.06, 0.10, 0.95)
-frame:SetBackdropBorderColor(C.Colors.ACCENT[1], C.Colors.ACCENT[2], C.Colors.ACCENT[3], 0.6)
-frame:Hide()
+local frame, titleText, summaryText, scrollFrame, content
+local rowPool = {}
+local ROW_HEIGHT = 24
 
-table.insert(UISpecialFrames, "RNGeezCharBreakdown")
+local function EnsureFrame()
+    if frame then return end
 
--- Title (set dynamically)
-local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-titleText:SetPoint("TOPLEFT", 12, -10)
-titleText:SetTextColor(C.Colors.ACCENT[1], C.Colors.ACCENT[2], C.Colors.ACCENT[3])
+    frame = CreateFrame("Frame", "RNGeezCharBreakdown", UIParent, "BackdropTemplate")
+    frame:SetSize(340, 380)
+    frame:SetPoint("CENTER", 200, 0)
+    frame:SetFrameStrata("DIALOG")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+        insets   = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    frame:SetBackdropColor(0.06, 0.06, 0.10, 0.95)
+    frame:SetBackdropBorderColor(C.Colors.ACCENT[1], C.Colors.ACCENT[2], C.Colors.ACCENT[3], 0.6)
+    frame:Hide()
 
--- Close button
-local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
-closeBtn:SetSize(20, 20)
+    table.insert(UISpecialFrames, "RNGeezCharBreakdown")
 
--- Summary line
-local summaryText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-summaryText:SetPoint("TOPLEFT", 12, -30)
-summaryText:SetTextColor(0.7, 0.7, 0.7)
+    titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    titleText:SetPoint("TOPLEFT", 12, -10)
+    titleText:SetTextColor(C.Colors.ACCENT[1], C.Colors.ACCENT[2], C.Colors.ACCENT[3])
 
--- Separator
-local sep = frame:CreateTexture(nil, "OVERLAY")
-sep:SetHeight(1)
-sep:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -46)
-sep:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -46)
-sep:SetColorTexture(1, 1, 1, 0.08)
+    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    closeBtn:SetSize(20, 20)
 
----------------------------------------------------------------------------
--- SCROLL FRAME
----------------------------------------------------------------------------
+    summaryText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    summaryText:SetPoint("TOPLEFT", 12, -30)
+    summaryText:SetTextColor(0.7, 0.7, 0.7)
 
-local scrollFrame = CreateFrame("ScrollFrame", "RNGeezCharBreakdownScroll", frame, "UIPanelScrollFrameTemplate")
-scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -50)
-scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -26, 8)
+    local sep = frame:CreateTexture(nil, "OVERLAY")
+    sep:SetHeight(1)
+    sep:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -46)
+    sep:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -46)
+    sep:SetColorTexture(1, 1, 1, 0.08)
 
-local content = CreateFrame("Frame", nil, scrollFrame)
-content:SetHeight(1)
-scrollFrame:SetScrollChild(content)
+    scrollFrame = CreateFrame("ScrollFrame", "RNGeezCharBreakdownScroll", frame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -50)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -26, 8)
 
-scrollFrame:SetScript("OnSizeChanged", function(self, width)
-    content:SetWidth(width)
-end)
+    content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetHeight(1)
+    scrollFrame:SetScrollChild(content)
+
+    scrollFrame:SetScript("OnSizeChanged", function(_, width)
+        content:SetWidth(width)
+    end)
+end
 
 ---------------------------------------------------------------------------
 -- ROW POOL
 ---------------------------------------------------------------------------
-
-local rowPool = {}
-local ROW_HEIGHT = 24
 
 local function GetRow(parent, index)
     if rowPool[index] then
@@ -116,28 +97,23 @@ local function GetRow(parent, index)
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(ROW_HEIGHT)
 
-    -- Class color bar (left accent)
     row.classBar = row:CreateTexture(nil, "BACKGROUND")
     row.classBar:SetWidth(3)
     row.classBar:SetPoint("TOPLEFT", 0, -2)
     row.classBar:SetPoint("BOTTOMLEFT", 0, 2)
 
-    -- Character name
     row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.nameText:SetPoint("LEFT", 10, 0)
     row.nameText:SetJustifyH("LEFT")
 
-    -- Attempt count (right side)
     row.countText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.countText:SetPoint("RIGHT", -60, 0)
     row.countText:SetJustifyH("RIGHT")
 
-    -- Percentage bar
     row.pctBar = row:CreateTexture(nil, "ARTWORK")
     row.pctBar:SetHeight(4)
     row.pctBar:SetPoint("BOTTOMLEFT", 10, 2)
 
-    -- Alternating background
     row.bg = row:CreateTexture(nil, "BACKGROUND", nil, -1)
     row.bg:SetAllPoints()
 
@@ -157,6 +133,7 @@ end
 
 function CharacterBreakdown:Show(item)
     if not item then return end
+    EnsureFrame()
 
     local itemName = item.name or "?"
     local totalAttempts = item.attempts or 0
@@ -165,7 +142,7 @@ function CharacterBreakdown:Show(item)
     summaryText:SetText(ns.AttemptTracker:GetSummaryText(item))
 
     -- Gather per-character data from the roster
-    local roster = RNGeezDB and RNGeezDB[C.DBKeys.CHARACTERS] or {}
+    local roster = ns.roster or {}
     local entries = {}
     local attributedTotal = 0
 
@@ -212,7 +189,6 @@ function CharacterBreakdown:Show(item)
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -yOffset)
         row:SetPoint("RIGHT", content, "RIGHT")
 
-        -- Class color bar
         if entry.isUnattributed then
             row.classBar:SetColorTexture(0.3, 0.3, 0.3, 0.6)
             row.nameText:SetText("Unattributed (historical)")
@@ -224,11 +200,9 @@ function CharacterBreakdown:Show(item)
             row.nameText:SetTextColor(r, g, b)
         end
 
-        -- Attempt count
         row.countText:SetText(entry.attempts .. " attempts")
         row.countText:SetTextColor(0.8, 0.8, 0.8)
 
-        -- Percentage bar (proportional to highest contributor)
         local pct = entry.attempts / math.max(maxAttempts, 1)
         local barWidth = math.max(1, pct * 200)
         row.pctBar:SetWidth(barWidth)
@@ -239,7 +213,6 @@ function CharacterBreakdown:Show(item)
             row.pctBar:SetColorTexture(r, g, b, 0.2)
         end
 
-        -- Alternating row bg
         if i % 2 == 0 then
             row.bg:SetColorTexture(1, 1, 1, 0.02)
         else
@@ -263,12 +236,12 @@ function CharacterBreakdown:Show(item)
         yOffset = ROW_HEIGHT
     end
 
-    HideUnusedRows(#entries + 1)
+    HideUnusedRows(math.max(#entries, 1) + 1)
     content:SetHeight(math.max(1, yOffset))
 
     frame:Show()
 end
 
 function CharacterBreakdown:Hide()
-    frame:Hide()
+    if frame then frame:Hide() end
 end

@@ -125,6 +125,17 @@ end
 function ItemResolver:ScanCollections()
     ns.RNGeez:Debug("Scanning collections for owned items...")
 
+    -- Build mount ownership lookup once (O(n) instead of O(n*m) per mount)
+    local ownedMountSpells = {}
+    for _, mountId in ipairs(C_MountJournal.GetMountIDs()) do
+        local _, spellId, _, _, _, _, _, _, _, _, isCollected =
+            C_MountJournal.GetMountInfoByID(mountId)
+        if isCollected and spellId and spellId > 0 then
+            ownedMountSpells[spellId] = true
+        end
+    end
+    self._ownedMountSpells = ownedMountSpells
+
     local foundCount = 0
 
     ns.ForEachItem(function(_, item)
@@ -136,6 +147,8 @@ function ItemResolver:ScanCollections()
             end
         end
     end)
+
+    self._ownedMountSpells = nil  -- don't hold stale data between scans
 
     if foundCount > 0 then
         ns.RNGeez:Debug("Collection scan found %d newly obtained items.", foundCount)
@@ -171,23 +184,9 @@ end
 -- @param item (table) - The item entry (needs .spellId or .itemId)
 -- @return (boolean)
 function ItemResolver:IsMountOwned(item)
-    -- If we have a spell ID, we can use the direct lookup
-    if item.spellId then
-        -- C_MountJournal.GetMountFromSpell might not exist in all versions,
-        -- so we fall back to iterating. But first, try the quick route.
-        local mountIDs = C_MountJournal.GetMountIDs()
-        for _, mountId in ipairs(mountIDs) do
-            local name, spellId, _, _, _, _, _, _, _, _, isCollected =
-                C_MountJournal.GetMountInfoByID(mountId)
-            if spellId == item.spellId and isCollected then
-                return true
-            end
-        end
+    if item.spellId and item.spellId ~= 0 then
+        return self._ownedMountSpells and self._ownedMountSpells[item.spellId] or false
     end
-
-    -- Fallback: We don't have a quick way to go from itemId → mount ownership.
-    -- For now, return false and rely on the spellId path.
-    -- Phase 3 will ensure all mount entries have spellIds.
     return false
 end
 
@@ -269,7 +268,7 @@ function ItemResolver:ResolveSpellIds()
         if spellId and spellId > 0 then
             item.spellId = spellId
             resolved = resolved + 1
-            ns.RNGeez:Print("Resolved mount: %s → spellId %d", item.name or "?", spellId)
+            ns.RNGeez:Debug("Resolved mount: %s -> spellId %d", item.name or "?", spellId)
         end
     end)
 

@@ -210,6 +210,7 @@ local function OnAddonLoaded(loadedAddonName)
     ns.items    = RNGeezDB[C.DBKeys.ITEMS]
     ns.custom   = RNGeezDB[C.DBKeys.CUSTOM]
     ns.settings = RNGeezDB[C.DBKeys.SETTINGS]
+    ns.roster   = RNGeezDB[C.DBKeys.CHARACTERS]
     ns.charDB   = RNGeezCharDB
 
     addonLoaded = true
@@ -247,15 +248,14 @@ function RNGeez:FinishInit()
         ns.playerGUID = guid
         RNGeezCharDB.guid = guid
 
-        local roster = RNGeezDB[C.DBKeys.CHARACTERS]
-        if not roster[guid] then roster[guid] = {} end
-        roster[guid].name  = playerName
-        roster[guid].realm = realm
-        roster[guid].class = className
+        if not ns.roster[guid] then ns.roster[guid] = {} end
+        ns.roster[guid].name  = playerName
+        ns.roster[guid].realm = realm
+        ns.roster[guid].class = className
 
         -- Sync this character's per-char attempts into the account-wide roster
         -- so the breakdown UI can show all characters' data
-        roster[guid].items = RNGeezCharDB.items
+        ns.roster[guid].items = RNGeezCharDB.items
     end
 
     -- 1. Event system first - all other modules register events through this
@@ -312,6 +312,18 @@ function RNGeez:Debug(...)
         local msg = string.format(...)
         local prefix = "|cFF33FF85RNGeez Debug|r: "
         DEFAULT_CHAT_FRAME:AddMessage(prefix .. msg)
+    end
+end
+
+-- Clear and repopulate ns.charDB.items in-place using wipe().
+-- This preserves the shared table reference with the character roster,
+-- so both ns.charDB.items and roster[guid].items stay in sync.
+function RNGeez:ReplaceCharItems(newData)
+    local items = ns.charDB and ns.charDB.items
+    if not items then return end
+    wipe(items)
+    if newData then
+        for k, v in pairs(newData) do items[k] = v end
     end
 end
 
@@ -439,14 +451,15 @@ local function handleReset()
         item.finds = {}
     end)
 
-    -- Clear per-character data
-    if ns.charDB then ns.charDB.items = {} end
+    -- Clear per-character data (wipe in-place to preserve roster alias)
+    if ns.charDB and ns.charDB.items then wipe(ns.charDB.items) end
 
-    -- Clear all characters' snapshots in the roster
-    local roster = RNGeezDB[C.DBKeys.CHARACTERS]
-    if roster then
-        for _, charInfo in pairs(roster) do
-            charInfo.items = {}
+    -- Clear all other characters' snapshots in the roster
+    if ns.roster then
+        for _, charInfo in pairs(ns.roster) do
+            if charInfo.items and charInfo.items ~= (ns.charDB and ns.charDB.items) then
+                wipe(charInfo.items)
+            end
         end
     end
 

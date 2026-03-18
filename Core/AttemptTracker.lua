@@ -72,8 +72,11 @@ end
 -- @param item (table) - The item entry
 -- @param count (number) - The new attempt count
 -- @param source (string) - Why we're syncing (for debug)
-function AttemptTracker:SyncAttempts(item, count, source)
+-- @param skipCharAttribution (boolean) - If true, don't attribute delta to current character
+function AttemptTracker:SyncAttempts(item, count, source, skipCharAttribution)
     if not item or not count then return end
+    count = tonumber(count)
+    if not count then return end
     if count <= (item.attempts or 0) then return end
 
     local delta = count - (item.attempts or 0)
@@ -81,6 +84,11 @@ function AttemptTracker:SyncAttempts(item, count, source)
         item.name or "unknown", item.attempts or 0, count, delta, source or "unknown")
 
     item.attempts = count
+
+    -- Attribute the synced delta to the current character
+    if not skipCharAttribution and ns.charDB and ns.charDB.items and item.name then
+        ns.charDB.items[item.name] = (ns.charDB.items[item.name] or 0) + delta
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -197,7 +205,7 @@ end
 
 -- Print an attempt update to chat.
 -- Format: "Invincible's Reins: 348 attempts (86.9% - Very unlucky)"
-local function AnnounceAttempt(self, item)
+function AttemptTracker:AnnounceAttempt(item)
     if not item then return end
 
     local summary = self:GetSummaryText(item)
@@ -206,5 +214,3 @@ local function AnnounceAttempt(self, item)
     -- For now, always print to self. Later we can add party/say channels.
     ns.RNGeez:Print("%s: %s", name, summary)
 end
-
-AttemptTracker.AnnounceAttempt = AnnounceAttempt

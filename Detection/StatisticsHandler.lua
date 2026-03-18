@@ -66,7 +66,7 @@ function StatisticsHandler:SyncItem(item)
     if totalKills > (item.attempts or 0) then
         ns.AttemptTracker:SyncAttempts(item, totalKills,
             "Blizzard statistics (stat IDs: " ..
-            table.concat(item.detection.statisticIds, ",") .. ")")
+            table.concat(item.detection.statisticIds, ",") .. ")", true)
     end
 end
 
