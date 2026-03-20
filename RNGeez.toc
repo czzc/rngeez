@@ -29,6 +29,7 @@ Core\AttemptTracker.lua
 Core\RarityImporter.lua
 Core\ItemResolver.lua
 Core\DetectionEngine.lua
+Core\LockoutTracker.lua
 
 # Detection handlers
 Detection\LootHandler.lua

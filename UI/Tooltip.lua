@@ -67,6 +67,9 @@ local EXPANSION_ORDER = {
 -- Track which expansion groups are collapsed (persisted in settings)
 local collapsedGroups = {}  -- Set during Init from tsettings
 
+-- Pin state for character breakdown popout
+local pinnedItem = nil
+
 -- Luck colors - delegates to AttemptTracker so thresholds stay in sync
 local function GetLuckColor(attempts, chance)
     if not attempts or not chance or chance <= 0 or attempts <= 0 then
@@ -105,6 +108,12 @@ frame:SetResizeBounds(280, 250, 600, 800)
 frame:SetFrameStrata("HIGH")
 frame:Hide()
 
+-- Gradient background texture (created once, styled in ApplyFrameStyle)
+local gradientBg = frame:CreateTexture(nil, "BACKGROUND")
+gradientBg:SetPoint("TOPLEFT", 1, -1)
+gradientBg:SetPoint("BOTTOMRIGHT", -1, 1)
+gradientBg:SetTexture("Interface\\Buttons\\WHITE8x8")
+
 local function ApplyFrameStyle()
     if not tsettings then return end
     local r, g, b = GetAccent()
@@ -115,10 +124,23 @@ local function ApplyFrameStyle()
         edgeSize = 1,
         insets   = { left = 1, right = 1, top = 1, bottom = 1 },
     })
-    frame:SetBackdropColor(0.06, 0.06, 0.10, tsettings.opacity)
+    frame:SetBackdropColor(0, 0, 0, 0)  -- Transparent - gradient handles background
     frame:SetBackdropBorderColor(r, g, b, 0.4)
+
+    -- Gradient: near-black at top, darker gray at bottom
+    local opacity = tsettings.opacity
+    gradientBg:SetGradient("VERTICAL",
+        CreateColor(0.14, 0.14, 0.18, opacity),  -- bottom (lighter)
+        CreateColor(0.04, 0.04, 0.06, opacity)    -- top (darker)
+    )
+
     frame:SetScale(tsettings.scale)
     frame:SetSize(tsettings.width, tsettings.height)
+
+    -- Keep popout panel in sync
+    if ns.CharacterBreakdown then
+        ns.CharacterBreakdown:ApplyStyle(r, g, b, opacity)
+    end
 end
 
 -- Top accent stripe
@@ -228,6 +250,34 @@ resizer:SetScript("OnMouseUp", function()
     if ns.Tooltip then ns.Tooltip:Refresh() end
 end)
 
+-- Forward declaration - rowPool populated later by GetRow()
+local rowPool = {}
+
+local function ClearPinHighlights()
+    for _, row in pairs(rowPool) do
+        if row.pinHighlight then row.pinHighlight:Hide() end
+    end
+end
+
+-- ESC to unpin breakdown popout, OnHide to clear pin state
+frame:EnableKeyboard(true)
+frame:SetPropagateKeyboardInput(true)
+frame:SetScript("OnKeyDown", function(self, key)
+    if key == "ESCAPE" and pinnedItem then
+        pinnedItem = nil
+        ClearPinHighlights()
+        if ns.CharacterBreakdown then ns.CharacterBreakdown:Hide() end
+        self:SetPropagateKeyboardInput(false)  -- Consume this ESC
+    else
+        self:SetPropagateKeyboardInput(true)
+    end
+end)
+
+frame:SetScript("OnHide", function()
+    pinnedItem = nil
+    ClearPinHighlights()
+end)
+
 -- Footer
 local footerText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 footerText:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 6)
@@ -239,7 +289,7 @@ footerText:SetTextColor(0.4, 0.4, 0.4)
 -- Two types: expansion headers and item rows.
 ---------------------------------------------------------------------------
 
-local rowPool = {}
+
 local ROW_HEIGHT_ITEM = 24
 local ROW_HEIGHT_HEADER = 22
 local ROW_SPACING = 1
@@ -260,10 +310,22 @@ local function GetRow(index)
     row.highlight:SetColorTexture(1, 1, 1, 0.04)
     row.highlight:Hide()
 
+    -- Pin highlight (shown on the pinned/selected item row)
+    row.pinHighlight = row:CreateTexture(nil, "BACKGROUND", nil, 2)
+    row.pinHighlight:SetAllPoints()
+    row.pinHighlight:SetColorTexture(1, 1, 1, 0.08)
+    row.pinHighlight:Hide()
+
     -- Collapse arrow (only visible on headers)
     row.arrow = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.arrow:SetPoint("LEFT", row, "LEFT", 6, 0)
     row.arrow:Hide()
+
+    -- Lockout status dot (small indicator, visible on BOSS_KILL / quest-locked items)
+    row.lockoutDot = row:CreateTexture(nil, "ARTWORK")
+    row.lockoutDot:SetSize(8, 8)
+    row.lockoutDot:SetPoint("LEFT", row, "LEFT", 6, 0)
+    row.lockoutDot:Hide()
 
     -- Item icon (hidden for headers)
     row.icon = row:CreateTexture(nil, "ARTWORK")
@@ -314,6 +376,10 @@ local function GetRow(index)
             end
             if self.itemData.found then
                 GameTooltip:AddLine("Obtained!", 0.2, 1.0, 0.2)
+            elseif self.itemData.lockout == true then
+                GameTooltip:AddLine("Locked out this week", 0.8, 0.2, 0.2)
+            elseif self.itemData.lockout == false then
+                GameTooltip:AddLine("Ready to farm!", 0.2, 0.8, 0.2)
             end
             GameTooltip:Show()
         elseif self.isHeader then
@@ -321,14 +387,25 @@ local function GetRow(index)
             GameTooltip:AddLine("Click to expand/collapse", 0.5, 0.5, 0.5)
             GameTooltip:Show()
         end
+
+        -- Show character breakdown popout on hover (if nothing pinned)
+        if self.itemData and not pinnedItem and ns.CharacterBreakdown then
+            ns.CharacterBreakdown:Show(self.itemData)
+        end
     end)
     row:SetScript("OnLeave", function(self)
         self.highlight:Hide()
         GameTooltip:Hide()
+        -- Hide popout on leave if nothing is pinned
+        if not pinnedItem and self.itemData and ns.CharacterBreakdown then
+            ns.CharacterBreakdown:Hide()
+        end
     end)
 
     -- Click handler
     row:SetScript("OnMouseDown", function(self, button)
+        if button ~= "LeftButton" then return end
+
         if self.isHeader and self.expKey then
             -- Left-click headers: toggle collapse
             collapsedGroups[self.expKey] = not collapsedGroups[self.expKey]
@@ -336,9 +413,20 @@ local function GetRow(index)
                 tsettings.collapsedGroups = collapsedGroups
             end
             if ns.Tooltip then ns.Tooltip:Refresh() end
-        elseif button == "RightButton" and self.itemData and ns.CharacterBreakdown then
-            -- Right-click items: show per-character breakdown
-            ns.CharacterBreakdown:Show(self.itemData)
+        elseif self.itemData and ns.CharacterBreakdown then
+            -- Left-click items: pin/unpin character breakdown popout
+            if pinnedItem == self.itemData then
+                -- Clicking same item: unpin
+                pinnedItem = nil
+                ClearPinHighlights()
+                ns.CharacterBreakdown:Hide()
+            else
+                -- Pin this item
+                pinnedItem = self.itemData
+                ClearPinHighlights()
+                self.pinHighlight:Show()
+                ns.CharacterBreakdown:Show(self.itemData)
+            end
         end
     end)
 
@@ -408,6 +496,28 @@ local function GatherItems()
 end
 
 ---------------------------------------------------------------------------
+-- LOCKOUT DOT HELPER
+-- Shows/hides the lockout indicator and adjusts icon position.
+---------------------------------------------------------------------------
+
+local function ApplyLockoutDot(row, item, iconIndent)
+    if not item.found and item.lockout ~= nil then
+        row.lockoutDot:Show()
+        if item.lockout then
+            row.lockoutDot:SetColorTexture(0.8, 0.2, 0.2, 0.9)  -- Red: locked
+            row.text:SetTextColor(0.4, 0.4, 0.4)  -- Dim the name
+        else
+            row.lockoutDot:SetColorTexture(0.2, 0.8, 0.2, 0.9)  -- Green: ready
+        end
+        row.lockoutDot:SetPoint("LEFT", row, "LEFT", iconIndent, 0)
+        row.icon:SetPoint("LEFT", row, "LEFT", iconIndent + 12, 0)
+    else
+        row.lockoutDot:Hide()
+        row.icon:SetPoint("LEFT", row, "LEFT", iconIndent, 0)
+    end
+end
+
+---------------------------------------------------------------------------
 -- DISPLAY REFRESH
 ---------------------------------------------------------------------------
 
@@ -456,6 +566,7 @@ local function RefreshDisplay()
 
                 -- Style as header
                 headerRow.icon:Hide()
+                headerRow.lockoutDot:Hide()
                 headerRow.text:SetFontObject(fonts.header)
                 headerRow.text:SetPoint("LEFT", headerRow.arrow, "RIGHT", 4, 0)
                 headerRow.text:SetText(C.ExpansionLabels[expKey] or expKey)
@@ -478,11 +589,11 @@ local function RefreshDisplay()
                     row.isHeader = false
                     row.itemData = item
 
-                    -- Icon
+                    -- Icon + lockout dot
                     row.icon:Show()
-                    row.icon:SetPoint("LEFT", row, "LEFT", 14, 0)  -- Indented under header
                     local icon = ns.ItemResolver:GetIcon(item.itemId)
                     row.icon:SetTexture(icon)
+                    ApplyLockoutDot(row, item, 14)  -- 14 = indented under header
 
                     -- Item name
                     row.text:SetFontObject(fonts.item)
@@ -496,7 +607,10 @@ local function RefreshDisplay()
                         row.rightText:SetTextColor(0.2, 0.6, 0.2)
                     else
                         local lr, lg, lb = GetLuckColor(item.attempts or 0, item.chance or 100)
-                        row.text:SetTextColor(1, 1, 1)
+                        -- Don't override dimmed text from lockout dot
+                        if item.lockout ~= true then
+                            row.text:SetTextColor(1, 1, 1)
+                        end
                         row.rightText:SetFontObject(fonts.item)
                         local attempts = item.attempts or 0
                         if attempts > 0 then
@@ -547,9 +661,9 @@ local function RefreshDisplay()
             row.itemData = item
 
             row.icon:Show()
-            row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
             local icon = ns.ItemResolver:GetIcon(item.itemId)
             row.icon:SetTexture(icon)
+            ApplyLockoutDot(row, item, 4)  -- 4 = no header indent
 
             row.text:SetFontObject(fonts.item)
             row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
@@ -562,7 +676,9 @@ local function RefreshDisplay()
                 row.rightText:SetTextColor(0.2, 0.6, 0.2)
             else
                 local lr, lg, lb = GetLuckColor(item.attempts or 0, item.chance or 100)
-                row.text:SetTextColor(1, 1, 1)
+                if item.lockout ~= true then
+                    row.text:SetTextColor(1, 1, 1)
+                end
                 row.rightText:SetFontObject(fonts.item)
                 local attempts = item.attempts or 0
                 if attempts > 0 then
@@ -579,6 +695,15 @@ local function RefreshDisplay()
 
     content:SetHeight(math.max(yOffset, 1))
     footerText:SetText(display .. " remaining")
+
+    -- Re-apply pin highlight after row rebuild
+    if pinnedItem then
+        for _, row in pairs(rowPool) do
+            if row.itemData == pinnedItem then
+                row.pinHighlight:Show()
+            end
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -906,6 +1031,13 @@ function Tooltip:Init()
     ApplyFrameStyle()
     resizer:SetShown(not tsettings.locked)
 
+    -- Initialize character breakdown as attached popout panel
+    if ns.CharacterBreakdown then
+        ns.CharacterBreakdown:SetParentFrame(frame)
+        local r, g, b = GetAccent()
+        ns.CharacterBreakdown:ApplyStyle(r, g, b, tsettings.opacity)
+    end
+
     -- Restore position
     if tsettings.anchorPoint then
         frame:ClearAllPoints()
@@ -920,6 +1052,9 @@ function Tooltip:Init()
         Tooltip:Refresh()
     end)
     ns.EventBus:RegisterAddonEvent(ns.Events.ITEM_FOUND, function()
+        Tooltip:Refresh()
+    end)
+    ns.EventBus:RegisterAddonEvent(ns.Events.LOCKOUT_UPDATED, function()
         Tooltip:Refresh()
     end)
 

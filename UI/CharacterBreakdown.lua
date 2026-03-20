@@ -2,13 +2,12 @@
     UI/CharacterBreakdown.lua
     Shows per-character attempt breakdown for a specific item.
 
-    Opened by right-clicking an item in the tracker window.
-    Displays each character's contribution to the total attempt count,
-    with class-colored bars and an "Unattributed" row for historical data.
+    Displays as an attached popout panel extending from the right side
+    of the main tracker frame. No left border creates a seamless join.
+    Appears on hover (preview) or left-click (pinned).
 ]]
 
 local addonName, ns = ...
-local C = ns.Constants
 
 local CharacterBreakdown = {}
 ns.CharacterBreakdown = CharacterBreakdown
@@ -22,57 +21,71 @@ local function GetClassColor(class)
 end
 
 ---------------------------------------------------------------------------
--- FRAME (lazy-initialized on first Show)
+-- FRAME (lazy-initialized via SetParentFrame)
 ---------------------------------------------------------------------------
 
 local frame, titleText, summaryText, scrollFrame, content
 local rowPool = {}
 local ROW_HEIGHT = 24
+local PANEL_WIDTH = 300
+local HEADER_HEIGHT = 50  -- Title + summary + separator
 
-local function EnsureFrame()
+local function EnsureFrame(parentFrame)
     if frame then return end
 
-    frame = CreateFrame("Frame", "RNGeezCharBreakdown", UIParent, "BackdropTemplate")
-    frame:SetSize(340, 380)
-    frame:SetPoint("CENTER", 200, 0)
-    frame:SetFrameStrata("DIALOG")
-    frame:SetMovable(true)
+    frame = CreateFrame("Frame", "RNGeezCharBreakdown", parentFrame)
+    frame:SetWidth(PANEL_WIDTH)
+    frame:SetFrameStrata("HIGH")
+    frame:SetPoint("TOPLEFT", parentFrame, "TOPRIGHT", -1, 0)
     frame:EnableMouse(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    frame:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets   = { left = 1, right = 1, top = 1, bottom = 1 },
-    })
-    frame:SetBackdropColor(0.06, 0.06, 0.10, 0.95)
-    frame:SetBackdropBorderColor(C.Colors.ACCENT[1], C.Colors.ACCENT[2], C.Colors.ACCENT[3], 0.6)
     frame:Hide()
 
-    table.insert(UISpecialFrames, "RNGeezCharBreakdown")
+    -- Background gradient (matches main frame)
+    frame.bg = frame:CreateTexture(nil, "BACKGROUND")
+    frame.bg:SetAllPoints()
+    frame.bg:SetTexture("Interface\\Buttons\\WHITE8x8")
 
+    -- Borders: top, right, bottom only (no left = seamless join)
+    frame.borderTop = frame:CreateTexture(nil, "OVERLAY")
+    frame.borderTop:SetHeight(1)
+    frame.borderTop:SetPoint("TOPLEFT", 0, 0)
+    frame.borderTop:SetPoint("TOPRIGHT", 0, 0)
+
+    frame.borderRight = frame:CreateTexture(nil, "OVERLAY")
+    frame.borderRight:SetWidth(1)
+    frame.borderRight:SetPoint("TOPRIGHT", 0, 0)
+    frame.borderRight:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    frame.borderBottom = frame:CreateTexture(nil, "OVERLAY")
+    frame.borderBottom:SetHeight(1)
+    frame.borderBottom:SetPoint("BOTTOMLEFT", 0, 0)
+    frame.borderBottom:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    -- Top accent stripe (matches main frame)
+    frame.topStripe = frame:CreateTexture(nil, "OVERLAY")
+    frame.topStripe:SetHeight(2)
+    frame.topStripe:SetPoint("TOPLEFT", 0, -1)
+    frame.topStripe:SetPoint("TOPRIGHT", -1, -1)
+
+    -- Title (item name)
     titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleText:SetPoint("TOPLEFT", 12, -10)
-    titleText:SetTextColor(C.Colors.ACCENT[1], C.Colors.ACCENT[2], C.Colors.ACCENT[3])
 
-    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
-    closeBtn:SetSize(20, 20)
-
+    -- Summary text (attempt summary)
     summaryText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     summaryText:SetPoint("TOPLEFT", 12, -30)
     summaryText:SetTextColor(0.7, 0.7, 0.7)
 
+    -- Separator
     local sep = frame:CreateTexture(nil, "OVERLAY")
     sep:SetHeight(1)
-    sep:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -46)
-    sep:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -46)
+    sep:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -HEADER_HEIGHT)
+    sep:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -HEADER_HEIGHT)
     sep:SetColorTexture(1, 1, 1, 0.08)
 
+    -- Scroll frame for character rows
     scrollFrame = CreateFrame("ScrollFrame", "RNGeezCharBreakdownScroll", frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -50)
+    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -(HEADER_HEIGHT + 4))
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -26, 8)
 
     content = CreateFrame("Frame", nil, scrollFrame)
@@ -131,9 +144,36 @@ end
 -- PUBLIC API
 ---------------------------------------------------------------------------
 
+function CharacterBreakdown:SetParentFrame(parentFrame)
+    EnsureFrame(parentFrame)
+end
+
+function CharacterBreakdown:ApplyStyle(r, g, b, opacity)
+    if not frame then return end
+
+    -- Gradient matching the main frame
+    frame.bg:SetGradient("VERTICAL",
+        CreateColor(0.14, 0.14, 0.18, opacity),  -- bottom (lighter)
+        CreateColor(0.04, 0.04, 0.06, opacity)    -- top (darker)
+    )
+
+    -- Accent-colored borders + stripe
+    frame.borderTop:SetColorTexture(r, g, b, 0.4)
+    frame.borderRight:SetColorTexture(r, g, b, 0.4)
+    frame.borderBottom:SetColorTexture(r, g, b, 0.4)
+    frame.topStripe:SetColorTexture(r, g, b, 0.8)
+
+    -- Title color
+    titleText:SetTextColor(r, g, b)
+end
+
+function CharacterBreakdown:Hide()
+    if frame then frame:Hide() end
+end
+
 function CharacterBreakdown:Show(item)
     if not item then return end
-    EnsureFrame()
+    EnsureFrame(frame:GetParent())
 
     local itemName = item.name or "?"
     local totalAttempts = item.attempts or 0
@@ -194,10 +234,10 @@ function CharacterBreakdown:Show(item)
             row.nameText:SetText("Unattributed (historical)")
             row.nameText:SetTextColor(0.5, 0.5, 0.5)
         else
-            local r, g, b = GetClassColor(entry.class)
-            row.classBar:SetColorTexture(r, g, b, 0.8)
+            local cr, cg, cb = GetClassColor(entry.class)
+            row.classBar:SetColorTexture(cr, cg, cb, 0.8)
             row.nameText:SetText(entry.name)
-            row.nameText:SetTextColor(r, g, b)
+            row.nameText:SetTextColor(cr, cg, cb)
         end
 
         row.countText:SetText(entry.attempts .. " attempts")
@@ -209,8 +249,8 @@ function CharacterBreakdown:Show(item)
         if entry.isUnattributed then
             row.pctBar:SetColorTexture(0.3, 0.3, 0.3, 0.3)
         else
-            local r, g, b = GetClassColor(entry.class)
-            row.pctBar:SetColorTexture(r, g, b, 0.2)
+            local cr, cg, cb = GetClassColor(entry.class)
+            row.pctBar:SetColorTexture(cr, cg, cb, 0.2)
         end
 
         if i % 2 == 0 then
@@ -239,9 +279,11 @@ function CharacterBreakdown:Show(item)
     HideUnusedRows(math.max(#entries, 1) + 1)
     content:SetHeight(math.max(1, yOffset))
 
-    frame:Show()
-end
+    -- Size height to content, capped at parent frame height
+    local parentFrame = frame:GetParent()
+    local desiredHeight = yOffset + HEADER_HEIGHT + 12
+    local maxHeight = parentFrame and parentFrame:GetHeight() or 400
+    frame:SetHeight(math.min(desiredHeight, maxHeight))
 
-function CharacterBreakdown:Hide()
-    if frame then frame:Hide() end
+    frame:Show()
 end

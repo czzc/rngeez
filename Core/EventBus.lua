@@ -202,6 +202,10 @@ ns.Events = {
     -- Fired when custom items are added/removed/edited
     -- Args: (itemName, action) where action = "add", "remove", "edit"
     CUSTOM_ITEM_CHANGED = "TITHE_CUSTOM_ITEM_CHANGED",
+
+    -- Fired when lockout status has been recalculated
+    -- Args: (none) - UI should refresh lockout indicators
+    LOCKOUT_UPDATED = "RNGEEZ_LOCKOUT_UPDATED",
 }
 
 ---------------------------------------------------------------------------

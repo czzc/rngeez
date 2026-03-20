@@ -265,6 +265,10 @@ function RNGeez:FinishInit()
     --    and registers all WoW events needed for tracking
     if ns.DetectionEngine then ns.DetectionEngine:Init() end
 
+    -- 2.5. Lockout tracker - scans saved instances and quest flags
+    --      to determine which items are farmable on this character
+    if ns.LockoutTracker then ns.LockoutTracker:Init() end
+
     -- 3. UI modules
     if ns.MinimapButton then ns.MinimapButton:Init() end
     if ns.Tooltip       then ns.Tooltip:Init()       end
